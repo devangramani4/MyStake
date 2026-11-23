@@ -3,6 +3,7 @@ import { getBetfair, setApiCallObserver } from '../integrations/betfair/index.js
 import { reconcileOpenOrders } from '../services/betService.js';
 import { syncCatalogue } from '../services/marketService.js';
 import { odds } from '../services/oddsService.js';
+import { isHouseMode, loadWatchedMarkets, processMarket, watchedMarkets } from '../services/houseBookService.js';
 import { settleFromSnapshot, settlePendingMarkets } from '../services/settlementService.js';
 import { logger } from '../utils/logger.js';
 
@@ -55,6 +56,17 @@ export async function startJobs() {
   await odds.start();
   odds.onClosed((snap) => void settleFromSnapshot(snap).catch((err) => logger.error({ err: (err as Error).message, marketId: snap.marketId }, 'auto-settlement failed')));
 
+  if (isHouseMode()) {
+    // Match/lapse waiting house bets on every price update, plus a fallback sweep.
+    await loadWatchedMarkets();
+    odds.onUpdate((snap) => void processMarket(snap).catch((err) => logger.error({ err: (err as Error).message }, 'house matching failed')));
+    every('houseSweep', 3_000, async () => {
+      for (const id of watchedMarkets()) {
+        const snap = await odds.get(id);
+        if (snap) await processMarket(snap);
+      }
+    });
+  }
   every('catalogueSync', 5 * 60_000, syncCatalogue);
   every('reconcileOrders', 5_000, reconcileOpenOrders);
   every('settlePending', 30_000, settlePendingMarkets);

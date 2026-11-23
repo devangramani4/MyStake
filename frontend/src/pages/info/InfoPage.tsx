@@ -14,8 +14,8 @@ const DOCS = {
         <div className="alert alert-warning">Template content — replace with terms approved for your licensed jurisdiction.</div>
         <h2>1. Eligibility</h2>
         <p>You must be of legal gambling age in your place of residence and not located in a restricted territory. We may request identity verification (KYC) at any time.</p>
-        <h2>2. Exchange betting</h2>
-        <p>Bets are offers matched against other customers on an exchange. A back bet risks your stake; a lay bet risks your liability (stake × (odds − 1)). Unmatched portions may be cancelled by you or lapse when a market turns in-play.</p>
+        <h2>2. Back and lay betting</h2>
+        <p>Bets are accepted and settled by us at the odds shown, which are based on a third-party exchange price feed. A back bet risks your stake; a lay bet risks your liability (stake × (odds − 1)). A bet waiting for its odds may be cancelled by you and lapses when a market turns in-play.</p>
         <h2>3. Commission</h2>
         <p>Commission is charged on net winnings per market at the rate displayed in your account.</p>
         <h2>4. Settlement</h2>

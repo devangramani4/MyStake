@@ -1,7 +1,7 @@
 import { execute, query } from '../config/db.js';
 import { env } from '../config/env.js';
 
-export interface RiskDefaults { minStake: number; maxStake: number; maxExposure: number; maxOdds: number }
+export interface RiskDefaults { minStake: number; maxStake: number; maxExposure: number; maxOdds: number; maxMarketLiability: number }
 export interface RiskAlertConfig { largeStakeMultiplier: number; rapidBetsPerMinute: number; failedBetsPerHour: number }
 export interface ComplianceSettings { requireKycForWithdrawal: boolean; limitIncreaseCooldownHours: number }
 
@@ -13,7 +13,7 @@ interface Settings {
 }
 
 const DEFAULTS: Settings = {
-  'risk.defaults': { minStake: env.MIN_STAKE, maxStake: 100000, maxExposure: 500000, maxOdds: 1000 },
+  'risk.defaults': { minStake: env.MIN_STAKE, maxStake: 100000, maxExposure: 500000, maxOdds: 1000, maxMarketLiability: 1000000 },
   'risk.alerts': { largeStakeMultiplier: 10, rapidBetsPerMinute: 20, failedBetsPerHour: 15 },
   commission: { rate: env.COMMISSION_RATE },
   compliance: { requireKycForWithdrawal: true, limitIncreaseCooldownHours: 24 },

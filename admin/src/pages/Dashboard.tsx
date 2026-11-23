@@ -5,7 +5,8 @@ import { Badge, Loading, money, useLoad } from '../ui';
 interface Dash {
   users: { total: number; active30d: number; new24h: number };
   bets: { total: number; open: number; settled: number; failed: number; pending: number };
-  totals: { stakes: string; customerProfitLoss: string; revenue: string };
+  executionMode: 'house' | 'exchange';
+  totals: { stakes: string; customerProfitLoss: string; commission: string; revenue: string };
   deposits: { total: string; count: number; pending: number };
   withdrawals: { total: string; count: number; pending: number };
   openRiskAlerts: number;
@@ -34,7 +35,7 @@ export default function Dashboard() {
         <Tile label="Settled bets" value={d.bets.settled.toLocaleString()} />
         <Tile label="Total stakes" value={money(d.totals.stakes)} />
         <Tile label="Customer P/L" value={<span className={Number(d.totals.customerProfitLoss) >= 0 ? 'pos' : 'neg'}>{money(d.totals.customerProfitLoss)}</span>} sub="Settled, before commission" />
-        <Tile label="Revenue (commission)" value={money(d.totals.revenue)} />
+        <Tile label={d.executionMode === 'house' ? 'House revenue' : 'Revenue (commission)'} value={<span className={Number(d.totals.revenue) >= 0 ? 'pos' : 'neg'}>{money(d.totals.revenue)}</span>} sub={d.executionMode === 'house' ? `Commission ${money(d.totals.commission)} − customer winnings` : undefined} />
         <Tile label="Deposits" value={money(d.deposits.total)} sub={`${d.deposits.count} · ${d.deposits.pending} pending`} />
         <Tile label="Withdrawals" value={money(d.withdrawals.total)} sub={`${d.withdrawals.count} · ${d.withdrawals.pending} pending`} />
         <Tile label="Open risk alerts" value={<span className={d.openRiskAlerts ? 'neg' : ''}>{d.openRiskAlerts}</span>} />
@@ -53,7 +54,7 @@ export default function Dashboard() {
                 <Tooltip {...tip} />
                 <Legend />
                 <Line yAxisId="l" dataKey="stakes" name="Stakes" stroke="var(--back)" strokeWidth={2} dot={false} />
-                <Line yAxisId="r" dataKey="revenue" name="Commission" stroke="var(--brand)" strokeWidth={2} dot={false} />
+                <Line yAxisId="r" dataKey="revenue" name={d.executionMode === 'house' ? 'House revenue' : 'Commission'} stroke="var(--brand)" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>

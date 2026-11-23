@@ -7,7 +7,8 @@ import { onSession } from './services/api/http';
 import { socket } from './services/ws/socket';
 import { useAppDispatch, useAppSelector } from './store/hooks';
 import { bootstrapSession, sessionEnded, userUpdated } from './store/slices/authSlice';
-import { setUnread } from './store/slices/uiSlice';
+import { setExecutionMode, setUnread } from './store/slices/uiSlice';
+import { contentApi } from './services/api/contentApi';
 import { fetchWallet } from './store/slices/walletSlice';
 import type { User } from './types';
 
@@ -88,6 +89,7 @@ export default function App() {
       else if (user) dispatch(userUpdated(user as User));
     });
     void dispatch(bootstrapSession());
+    contentApi.config().then((c) => dispatch(setExecutionMode(c.executionMode))).catch(() => undefined);
   }, [dispatch]);
 
   useEffect(() => {

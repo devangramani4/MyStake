@@ -95,6 +95,7 @@ export function BetSlip() {
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const idemKey = useRef<string | null>(null);
+  const house = useAppSelector((s) => s.ui.executionMode === 'house');
   const insufficient = wallet ? totals.liability > Number(wallet.balance) : false;
 
   const openConfirm = () => {
@@ -157,7 +158,7 @@ export function BetSlip() {
         <div className="slip-foot">
           <label className="checkbox">
             <input type="checkbox" checked={policy === 'KEEP'} onChange={(e) => dispatch(setPolicy(e.target.checked ? 'KEEP' : 'REJECT'))} />
-            <span>Keep my bet on the exchange if odds or liquidity aren't available (unmatched bets can be cancelled)</span>
+            <span>{house ? "If these odds aren't available right now, keep my bet waiting and match it when the price comes back (it is cancelled automatically when the event starts)" : "Keep my bet on the exchange if odds or liquidity aren't available (unmatched bets can be cancelled)"}</span>
           </label>
           <div className="kv"><span>Total stake</span><b className="num">{money(totals.stake)}</b></div>
           <div className="kv"><span>Total liability</span><b className="num">{money(totals.liability)}</b></div>
@@ -203,7 +204,7 @@ export function BetSlip() {
         <div className="kv"><span>Total liability</span><b className="num">{money(totals.liability)}</b></div>
         {wallet && <div className="kv"><span>Balance after</span><b className="num">{money(Number(wallet.balance) - totals.liability)}</b></div>}
         <p className="faint" style={{ fontSize: 12 }}>
-          {policy === 'KEEP' ? 'Any part not matched immediately stays on the exchange and lapses when the market turns in-play.' : "If the odds or liquidity aren't available, the bet won't be placed."} Commission applies to net market winnings.
+          {policy === 'KEEP' ? `Any part not matched immediately stays ${house ? 'open' : 'on the exchange'} and lapses when the market turns in-play.` : `If the odds${house ? '' : ' or liquidity'} aren't available, the bet won't be placed.`} Commission applies to net market winnings.
         </p>
       </Modal>
     </div>

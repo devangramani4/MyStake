@@ -19,6 +19,7 @@ import { odds } from './oddsService.js';
 import { assertWithinRisk, evaluateBetActivity } from './riskService.js';
 import { applyLedger, lockWallet, publishWallet } from './walletService.js';
 import { toCents as c } from '../utils/money.js';
+import { assertMarketCapacity, initHouseBook, isHouseMode, resolveItem, watchMarket } from './houseBookService.js';
 
 export interface BetRequestItem {
   marketId: string;
@@ -35,7 +36,7 @@ export interface PlaceBetsInput {
   items: BetRequestItem[];
 }
 
-export const canPlaceOrders = () => env.BETFAIR_MODE === 'mock' || env.BETFAIR_PLACE_ORDERS;
+export const canPlaceOrders = () => isHouseMode() || env.BETFAIR_MODE === 'mock' || env.BETFAIR_PLACE_ORDERS;
 
 const OPEN_STATUSES = ['PENDING', 'UNMATCHED', 'PARTIALLY_MATCHED', 'MATCHED'] as const;
 const hex = (uuid: string) => uuid.replace(/-/g, '');
@@ -84,7 +85,7 @@ async function validateItem(req: BetRequestItem, policy: PlaceBetsInput['unmatch
     if (!levels.length) {
       throw new AppError('ODDS_CHANGED', 'The odds have changed. Please review your bet.', { marketId: req.marketId, selectionId: req.selectionId, side: req.side, currentPrice: best ?? null });
     }
-    if (available < stake) {
+    if (!isHouseMode() && available < stake) {
       throw new AppError('INSUFFICIENT_LIQUIDITY', `Only ${fromCents(available)} is available at these odds.`, { marketId: req.marketId, selectionId: req.selectionId, availableSize: fromCents(available) });
     }
   }
@@ -114,6 +115,9 @@ export async function placeBets(user: UserRow, input: PlaceBetsInput, ip?: strin
       if (toCents(wallet.balance) < totalLiability) {
         throw new AppError('INSUFFICIENT_FUNDS', 'Insufficient balance for this bet.', { required: fromCents(totalLiability), available: wallet.balance });
       }
+      if (isHouseMode()) {
+        await assertMarketCapacity(conn, validated.map((v) => v.market.id), validated.map((v) => ({ marketDbId: v.market.id, selectionId: v.req.selectionId, side: v.req.side, stake: v.stake, price: v.req.price })));
+      }
       const bet = await execute(
         'INSERT INTO bets (uuid, user_id, idempotency_key, total_stake, total_liability, status, ip_address) VALUES (?,?,?,?,?,?,?)',
         [betUuid, user.id, input.idempotencyKey, fromCents(totalStake), fromCents(totalLiability), 'PENDING', ip ?? null],
@@ -129,7 +133,7 @@ export async function placeBets(user: UserRow, input: PlaceBetsInput, ip?: strin
           conn,
         );
         const customerRef = hex(uuid);
-        await execute('INSERT INTO bet_orders (bet_item_id, customer_ref, operation, status, price, size) VALUES (?,?,?,?,?,?)', [it.insertId, customerRef, 'PLACE', 'SENT', v.req.price.toFixed(2), fromCents(v.stake)], conn);
+        if (!isHouseMode()) await execute('INSERT INTO bet_orders (bet_item_id, customer_ref, operation, status, price, size) VALUES (?,?,?,?,?,?)', [it.insertId, customerRef, 'PLACE', 'SENT', v.req.price.toFixed(2), fromCents(v.stake)], conn);
         items.push({ id: it.insertId, uuid, customerRef, v });
       }
       await applyLedger(conn, {
@@ -147,7 +151,21 @@ export async function placeBets(user: UserRow, input: PlaceBetsInput, ip?: strin
   }
   logger.info({ bet: { betUuid, userId: user.id, items: created.items.length, liability: fromCents(totalLiability) } }, 'bet request');
 
-  // ── Exchange: one placeOrders call per market ─────────────────────────
+  if (isHouseMode()) {
+    // ── House book: match locally against the current Betfair price. Nothing is sent to Betfair. ──
+    for (const it of created.items) {
+      const book = await odds.get(it.v.req.marketId);
+      const outcome = book ? await resolveItem(it.id, book, null) : null;
+      if (!outcome) {
+        // Price not available now: keep it waiting (status UNMATCHED) until the Betfair price reaches it.
+        await withTransaction((conn) => applyOrderSummary(conn, it.id, { sizeMatched: 0, averagePriceMatched: 0, sizeCancelled: 0, sizeLapsed: 0, sizeVoided: 0 }));
+        watchMarket(it.v.req.marketId);
+      }
+    }
+    return finishPlacement(user.id, created.betId, betUuid, totalStake);
+  }
+
+  // ── Exchange mode: one placeOrders call per market ────────────────────
   const { client } = await getBetfair();
   const byMarket = new Map<string, typeof created.items>();
   for (const it of created.items) {
@@ -190,12 +208,16 @@ export async function placeBets(user: UserRow, input: PlaceBetsInput, ip?: strin
     }
   }
 
-  const final = await finaliseBetStatus(created.betId);
-  await publishWallet(user.id);
-  const slip = await getBetSlip(user.id, created.betId);
-  bus.toUser(user.id, { type: 'bet', bet: slip });
-  void evaluateBetActivity(user.id, totalStake);
-  logger.info({ bet: { betUuid, status: final } }, 'bet response');
+  return finishPlacement(user.id, created.betId, betUuid, totalStake);
+}
+
+async function finishPlacement(userId: number, betId: number, betUuid: string, totalStake: Cents) {
+  const final = await finaliseBetStatus(betId);
+  await publishWallet(userId);
+  const slip = await getBetSlip(userId, betId);
+  bus.toUser(userId, { type: 'bet', bet: slip });
+  void evaluateBetActivity(userId, totalStake);
+  logger.info({ bet: { betUuid, status: final, mode: env.BET_EXECUTION_MODE } }, 'bet response');
 
   if (final === 'FAILED') {
     const first = slip.items.find((i) => i.failureCode);
@@ -286,6 +308,16 @@ const activeOrder = (itemId: number) =>
 export async function cancelUnmatched(userId: number, itemUuid: string) {
   const item = await getOwnedItem(userId, itemUuid);
   if (!['UNMATCHED', 'PARTIALLY_MATCHED'].includes(item.status)) throw new AppError('CONFLICT', 'Only unmatched bets can be cancelled.');
+  if (isHouseMode()) {
+    await withTransaction(async (conn) => {
+      const cur = await queryOne<BetItemRow>('SELECT * FROM bet_items WHERE id = ? FOR UPDATE', [item.id], conn);
+      if (!cur || !['UNMATCHED', 'PARTIALLY_MATCHED'].includes(cur.status)) throw new AppError('CONFLICT', 'This bet was matched or closed before it could be cancelled.');
+      const remaining = c(cur.stake) - c(cur.size_matched) - c(cur.size_lapsed);
+      await applyOrderSummary(conn, cur.id, { sizeMatched: c(cur.size_matched) / 100, averagePriceMatched: Number(cur.avg_price_matched ?? 0), sizeCancelled: remaining / 100, sizeLapsed: c(cur.size_lapsed) / 100, sizeVoided: 0 });
+    });
+    await publishWallet(userId);
+    return getBetItemView(userId, itemUuid);
+  }
   const order = await activeOrder(item.id);
   if (!order?.betfair_bet_id) throw new AppError('CONFLICT', 'This bet cannot be cancelled yet.');
   const { client } = await getBetfair();
@@ -303,6 +335,23 @@ export async function replacePrice(userId: number, itemUuid: string, newPrice: n
   if (!isValidPrice(newPrice)) throw new AppError('INVALID_PRICE', `${newPrice} is not a valid exchange price.`);
   const item = await getOwnedItem(userId, itemUuid);
   if (item.status !== 'UNMATCHED' || c(item.size_matched) > 0) throw new AppError('CONFLICT', 'Only fully unmatched bets can be edited.');
+  if (isHouseMode()) {
+    await withTransaction(async (conn) => {
+      const cur = await queryOne<BetItemRow>('SELECT * FROM bet_items WHERE id = ? FOR UPDATE', [item.id], conn);
+      if (!cur || cur.status !== 'UNMATCHED') throw new AppError('CONFLICT', 'This bet was matched or closed before it could be edited.');
+      const before = heldFor(cur);
+      const after = heldFor({ ...cur, requested_price: newPrice.toFixed(2) });
+      const diff = after - before;
+      if (diff !== 0) {
+        await applyLedger(conn, { userId, type: diff > 0 ? 'BET' : 'REFUND', amount: -diff, exposureChange: diff, idempotencyKey: `replace:${cur.uuid}:${Date.now()}`, referenceType: 'bet_item', referenceId: cur.uuid, description: diff > 0 ? 'Bet odds changed — additional liability' : 'Bet odds changed — liability reduced' });
+      }
+      await execute('UPDATE bet_items SET requested_price = ?, liability = ? WHERE id = ?', [newPrice.toFixed(2), fromCents(liability(cur.side, c(cur.stake), newPrice)), cur.id], conn);
+    });
+    const book = await odds.get(item.betfair_market_id);
+    if (book) await resolveItem(item.id, book, null);
+    await publishWallet(userId);
+    return getBetItemView(userId, itemUuid);
+  }
   const order = await activeOrder(item.id);
   if (!order?.betfair_bet_id) throw new AppError('CONFLICT', 'This bet cannot be edited yet.');
   const oldHeld = heldFor(item);
@@ -358,6 +407,7 @@ export async function syncOrder(itemId: number, betfairBetId: string) {
  * unknown (timeout) and refreshes matched/lapsed state of resting orders.
  */
 export async function reconcileOpenOrders() {
+  if (isHouseMode()) return; // house bets never reach Betfair; see houseBookService
   const { client } = await getBetfair();
   // 1) Ambiguous placements: look up by our customerOrderRef.
   const pending = await query<{ item_id: number; user_id: number; customer_ref: string; placed_at: Date }>(
@@ -485,3 +535,7 @@ export async function listBets(userId: number | null, f: BetFilter) {
   const rows = await query(`${ITEM_SELECT} ${w} ORDER BY bi.id DESC LIMIT ? OFFSET ?`, [...params, f.pageSize, offset(f)]);
   return toPage(rows.map(decorate), Number(total), f);
 }
+
+
+// House-book matching reuses the same order-state logic as exchange orders.
+initHouseBook(applyOrderSummary);

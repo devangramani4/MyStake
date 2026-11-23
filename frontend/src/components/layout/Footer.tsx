@@ -15,7 +15,7 @@ export function Footer() {
         <span className="age-badge" aria-label="18 plus">18+</span>
         <p>
           Gambling can be addictive. Please play responsibly and set limits in your account. {config.brand} is a demonstration platform;
-          availability of real-money betting depends on licensing in your jurisdiction. Exchange prices are provided via a third-party exchange API.
+          availability of real-money betting depends on licensing in your jurisdiction. Odds and results are sourced from a third-party exchange data feed.
         </p>
       </div>
       <p>© {new Date().getFullYear()} {config.brand}. All rights reserved.</p>

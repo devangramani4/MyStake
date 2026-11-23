@@ -5,7 +5,7 @@ import { useAuth } from '../auth';
 import { Badge, dt, Empty, Loading, money, Pager, Toast, useLoad } from '../ui';
 
 interface Alert { id: number; userId: number; username: string; rule: string; severity: string; details: unknown; status: string; createdAt: string }
-interface Exposure { marketId: string; marketName: string; eventName: string; bets: number; liability: string; stakes: string; backs: number; lays: number }
+interface Exposure { marketId: string; marketName: string; eventName: string; bets: number; liability: string; stakes: string; backs: number; lays: number; houseWorstCase: string }
 type Settings = Record<string, Record<string, number | boolean>>;
 
 function SettingsEditor() {
@@ -65,11 +65,11 @@ export default function Risk() {
         )}
       </section>
       <section className="card">
-        <div className="card-header"><span className="card-title">Largest open market exposure</span></div>
+        <div className="card-header"><span className="card-title">Open market exposure (house worst case = most the platform can lose on the market)</span></div>
         {!exposure.data ? <Loading /> : !exposure.data.length ? <Empty text="No open exposure" /> : (
           <div className="table-wrap"><table className="table">
-            <thead><tr><th>Market</th><th className="r">Bets</th><th className="r">Back / lay</th><th className="r">Stakes</th><th className="r">Customer liability</th></tr></thead>
-            <tbody>{exposure.data.map((x) => <tr key={x.marketId}><td><b>{x.eventName}</b><div className="faint" style={{ fontSize: 12 }}>{x.marketName} · {x.marketId}</div></td><td className="r num">{x.bets}</td><td className="r num">{x.backs} / {x.lays}</td><td className="r num">{money(x.stakes)}</td><td className="r num">{money(x.liability)}</td></tr>)}</tbody>
+            <thead><tr><th>Market</th><th className="r">Bets</th><th className="r">Back / lay</th><th className="r">Stakes</th><th className="r">Customer liability</th><th className="r">House worst-case loss</th></tr></thead>
+            <tbody>{exposure.data.map((x) => <tr key={x.marketId}><td><b>{x.eventName}</b><div className="faint" style={{ fontSize: 12 }}>{x.marketName} · {x.marketId}</div></td><td className="r num">{x.bets}</td><td className="r num">{x.backs} / {x.lays}</td><td className="r num">{money(x.stakes)}</td><td className="r num">{money(x.liability)}</td><td className="r num neg">{money(x.houseWorstCase)}</td></tr>)}</tbody>
           </table></div>
         )}
       </section>

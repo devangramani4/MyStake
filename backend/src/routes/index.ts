@@ -33,6 +33,9 @@ api.get('/markets/:marketId/book', catalogCtl.book);
 api.get('/scores', catalogCtl.scores);
 api.get('/promotions', catalogCtl.promotions);
 api.get('/stats', catalogCtl.stats);
+api.get('/config', (_req, res) => {
+  res.json({ executionMode: env.BET_EXECUTION_MODE, minStake: env.MIN_STAKE, currency: env.DEFAULT_CURRENCY });
+});
 
 // ── Account ────────────────────────────────────────────────────────────
 const me = Router();

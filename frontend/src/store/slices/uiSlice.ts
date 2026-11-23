@@ -13,6 +13,8 @@ const slice = createSlice({
     navOpen: false,
     betsVersion: 0,
     unread: 0,
+    /** 'house' = bets stay on this platform (Betfair supplies prices/results only). */
+    executionMode: 'house' as 'house' | 'exchange',
   },
   reducers: {
     toast: {
@@ -41,11 +43,14 @@ const slice = createSlice({
     setUnread(s, a: PayloadAction<number>) {
       s.unread = a.payload;
     },
+    setExecutionMode(s, a: PayloadAction<'house' | 'exchange'>) {
+      s.executionMode = a.payload;
+    },
     incrementUnread(s) {
       s.unread++;
     },
   },
 });
 
-export const { toast, dismissToast, socketStatus, feedStatus, setNavOpen, betsChanged, setUnread, incrementUnread } = slice.actions;
+export const { toast, dismissToast, socketStatus, feedStatus, setNavOpen, betsChanged, setUnread, incrementUnread, setExecutionMode } = slice.actions;
 export default slice.reducer;

@@ -17,7 +17,7 @@ INSERT INTO sports (betfair_id, name, slug, icon, display_order) VALUES
 ON DUPLICATE KEY UPDATE name = VALUES(name), display_order = VALUES(display_order);
 
 INSERT INTO system_settings (setting_key, setting_value) VALUES
-  ('risk.defaults', JSON_OBJECT('minStake', 10, 'maxStake', 100000, 'maxExposure', 500000, 'maxOdds', 1000)),
+  ('risk.defaults', JSON_OBJECT('minStake', 10, 'maxStake', 100000, 'maxExposure', 500000, 'maxOdds', 1000, 'maxMarketLiability', 1000000)),
   ('risk.alerts',   JSON_OBJECT('largeStakeMultiplier', 10, 'rapidBetsPerMinute', 20, 'failedBetsPerHour', 15)),
   ('commission',    JSON_OBJECT('rate', 0.02)),
   ('compliance',    JSON_OBJECT('requireKycForWithdrawal', true, 'limitIncreaseCooldownHours', 24))

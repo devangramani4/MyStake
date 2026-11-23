@@ -15,6 +15,8 @@ import { createSession, revokeByToken, rotateSession, signAccess, type ClientInf
 import { verifyTotp } from './totpService.js';
 import { applyLedger, publishWallet, walletView, getWallet } from './walletService.js';
 import { getLimits } from './complianceService.js';
+import { isHouseMode, marketPositions, worstCaseLoss } from './houseBookService.js';
+import { env } from '../config/env.js';
 
 // ───────── Admin authentication ─────────
 const adminView = (a: AdminRow) => ({ id: a.id, email: a.email, name: a.name, role: a.role, twoFactorEnabled: !!a.totp_enabled, permissions: permissionsFor(a.role) });
@@ -84,16 +86,19 @@ export async function dashboard() {
   );
   const { client } = await getBetfair();
   const apiErrors = await one<{ n: number }>(`SELECT COUNT(*) AS n FROM api_logs WHERE status <> 'OK' AND created_at > NOW(3) - INTERVAL 1 HOUR`);
-  // Platform revenue on an exchange = commission collected (customer P&L is matched against the exchange, not the house).
+  // Exchange mode: revenue = commission only (customers are matched against Betfair).
+  // House mode: the platform is the counterparty, so revenue = commission − customers' net winnings.
+  const revenueCents = isHouseMode() ? toCents(money.commission) - toCents(money.pnl) : toCents(money.commission);
   return {
+    executionMode: env.BET_EXECUTION_MODE,
     users: { total: Number(users.total), active30d: Number(users.active30 ?? 0), new24h: Number(users.new24 ?? 0) },
     bets: { total: Number(bets.total), open: Number(bets.open ?? 0), settled: Number(bets.settled ?? 0), failed: Number(bets.failed ?? 0), pending: Number(bets.pending ?? 0) },
-    totals: { stakes: fromCents(toCents(money.stakes)), customerProfitLoss: fromCents(toCents(money.pnl)), revenue: fromCents(toCents(money.commission)) },
+    totals: { stakes: fromCents(toCents(money.stakes)), customerProfitLoss: fromCents(toCents(money.pnl)), commission: fromCents(toCents(money.commission)), revenue: fromCents(revenueCents) },
     deposits: { total: fromCents(toCents(deposits.total)), count: Number(deposits.n), pending: Number(deposits.pending ?? 0) },
     withdrawals: { total: fromCents(toCents(withdrawals.total)), count: Number(withdrawals.n), pending: Number(withdrawals.pending ?? 0) },
     openRiskAlerts: Number(alerts.open),
     apiStatus: { ...client.status(), streamConnected: odds.isStreamConnected() || client.status().streamConnected, errorsLastHour: Number(apiErrors.n) },
-    daily: daily.map((d) => ({ day: d.day, stakes: Number(d.stakes), bets: Number(d.bets), revenue: Number(d.commission), customerPnl: Number(d.customer_pnl) })),
+    daily: daily.map((d) => ({ day: d.day, stakes: Number(d.stakes), bets: Number(d.bets), revenue: isHouseMode() ? Number(d.commission) - Number(d.customer_pnl) : Number(d.commission), customerPnl: Number(d.customer_pnl) })),
     bySport: bySport.map((s) => ({ sport: s.sport, stakes: Number(s.stakes), bets: Number(s.bets) })),
   };
 }
@@ -301,12 +306,19 @@ export async function reviewAlert(id: number, status: 'REVIEWED' | 'DISMISSED', 
 }
 
 export async function marketExposure() {
-  return query(
-    `SELECT m.betfair_id AS marketId, m.name AS marketName, e.name AS eventName, COUNT(*) AS bets,
+  const rows = await query<{ id: number; marketId: string }>(
+    `SELECT m.id, m.betfair_id AS marketId, m.name AS marketName, e.name AS eventName, COUNT(*) AS bets,
             SUM(bi.liability) AS liability, SUM(bi.stake) AS stakes, SUM(bi.side='BACK') AS backs, SUM(bi.side='LAY') AS lays
        FROM bet_items bi JOIN markets m ON m.id = bi.market_id JOIN events e ON e.id = m.event_id
       WHERE bi.status IN ('UNMATCHED','PARTIALLY_MATCHED','MATCHED') GROUP BY m.id ORDER BY liability DESC LIMIT 25`,
   );
+  // House worst case: the largest amount the platform loses across the possible winners.
+  const out = [];
+  for (const r of rows) {
+    const { positions, runnerIds } = await marketPositions(r.id);
+    out.push({ ...r, houseWorstCase: fromCents(worstCaseLoss(positions, runnerIds).worst) });
+  }
+  return out.sort((a, b) => Number(b.houseWorstCase) - Number(a.houseWorstCase));
 }
 
 // ───────── Admin users / audit / api logs ─────────

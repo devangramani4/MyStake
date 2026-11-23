@@ -1,6 +1,8 @@
 # BetX — Betting Exchange Platform
 
-A web-only betting exchange: a React customer app, a separate React admin console, a Node.js/TypeScript API that owns the Betfair integration, and MySQL.
+A web-only back/lay betting platform: a React customer app, a separate React admin console, a Node.js/TypeScript API, and MySQL.
+
+**Bets never go to Betfair.** By default (`BET_EXECUTION_MODE=house`) Betfair is used only as a **data feed** — sports, events, markets, live back/lay odds and official results. Every bet is matched, stored and settled in your own MySQL database, and your platform is the counterparty (it pays winners and keeps losing stakes). An optional `exchange` mode that forwards bets to Betfair still exists but is off unless you switch it on.
 
 > **BetX is a placeholder brand.** Replace the name (`VITE_BRAND_NAME`, `APP_NAME`), logo (`frontend/src/components/layout/Logo.tsx`) and legal pages with your own licensed assets. No third-party branding is included.
 
@@ -67,7 +69,7 @@ Live market data flow: **Betfair Stream API → `BetfairStream` (delta merge, he
 - Public pages: Login, Register, Forgot/Reset password, Email verification, Terms, Privacy, Responsible Gambling, Contact.
 - Responsive: desktop *Header / Sidebar / Main / Bet slip*; tablet drops the sidebar into a drawer; phones get a bottom nav and the bet slip as a bottom sheet.
 
-**Admin console** (`admin/`) — dashboard (users, active users, bets, open/settled, stakes, customer P/L, commission revenue, deposits, withdrawals, risk alerts, API status, charts), user management (search, profile, suspend/activate, KYC, wallet, bets, transactions, limits/restrictions, audited manual adjustments), bets (open/settled/failed/pending), sports & markets (enable/feature/hide, admin-suspend markets, manual settle/void, catalogue sync), finance (deposit confirmation, withdrawal approval, ledger), risk (alerts, exposure by market, platform limits/commission/compliance settings), admin users & roles, audit log, Betfair API status.
+**Admin console** (`admin/`) — dashboard (users, active users, bets, open/settled, stakes, customer P/L, house revenue (commission − customer winnings), deposits, withdrawals, risk alerts, API status, charts), user management (search, profile, suspend/activate, KYC, wallet, bets, transactions, limits/restrictions, audited manual adjustments), bets (open/settled/failed/pending), sports & markets (enable/feature/hide, admin-suspend markets, manual settle/void, catalogue sync), finance (deposit confirmation, withdrawal approval, ledger), risk (alerts, house worst-case loss per market, platform limits/commission/compliance settings), admin users & roles, audit log, Betfair API status.
 
 **Backend** (`backend/`, Node 22 + Express 5 + TypeScript + mysql2 + ws + zod + pino)
 
@@ -201,7 +203,7 @@ All Betfair access goes through `backend/src/integrations/betfair/`, behind the 
    openssl x509 -req -days 365 -in client-2048.csr -signkey client-2048.key -out client-2048.crt
    ```
 3. Store the cert and key **outside the repo** (e.g. a secrets mount) and set `BETFAIR_MODE=live`, `BETFAIR_APP_KEY`, `BETFAIR_USERNAME`, `BETFAIR_PASSWORD`, `BETFAIR_CERT_PATH`, `BETFAIR_KEY_PATH`. Use the endpoint set for your jurisdiction (`BETFAIR_API_URL`, `BETFAIR_IDENTITY_URL`, `BETFAIR_STREAM_HOST`).
-4. Market data works immediately. **Order placement stays disabled** until you set `BETFAIR_PLACE_ORDERS=true` — only do this once your Betfair agreement permits placing orders on behalf of your platform's customers.
+4. Market data and results work immediately. In the default house mode that is all Betfair is used for. Only if you ever switch to `BET_EXECUTION_MODE=exchange` must you also set `BETFAIR_PLACE_ORDERS=true` — and only once your Betfair agreement permits placing orders. Check that your Betfair licence/agreement permits using its data to run a house book in your jurisdiction.
 5. Live mode has no built-in score feed (the betting API doesn't provide scores). Implement `ScoreProvider` (`integrations/scores/types.ts`) for your licensed data provider; the UI hides the score panel when no scores exist.
 
 ### Mock mode (development / tests only)
@@ -223,9 +225,15 @@ Every change goes through `walletService.applyLedger()` inside a transaction: ro
 **Bet lifecycle**
 
 1. `POST /api/bets` with an `Idempotency-Key` header (one key per user confirmation; the slip reuses it on retry). A repeated key returns the original bet — no duplicate is possible (`UNIQUE(user_id, idempotency_key)`).
+   In **house mode** (default) steps 3–5 happen entirely in your database:
+   - matched immediately at the customer's requested odds if Betfair currently shows that price or better on the same side (Betfair's available amount is ignored — your platform takes the bet);
+   - otherwise rejected (`ODDS_CHANGED`), or, if the customer ticked "keep", left **waiting** and matched automatically when the Betfair price reaches it; waiting bets lapse (refunded) when the event goes in-play, a runner is removed or the market closes;
+   - a per-market **house loss limit** (`risk.defaults.maxMarketLiability`, Admin → Risk) rejects bets that would push the platform's worst-case loss on a market above the limit; bets that reduce the house's risk are always accepted;
+   - nothing is sent to Betfair — `placeOrders`, `cancelOrders`, `replaceOrders` and `listCurrentOrders` are never called (asserted in `tests/integration/house.test.ts`).
+   The exchange-mode behaviour below applies only when `BET_EXECUTION_MODE=exchange`.
 2. Validation: account status, email verified, terms version, self-exclusion / cooling-off / restrictions, ladder-valid price, min/max stake, odds cap, max exposure, daily loss limit, live market status, runner status, price & liquidity (unless *keep unmatched*).
 3. Tx 1: insert `bets` / `bet_items` / `bet_orders`, move liability `balance → exposure` (`BET`).
-4. `placeOrders` per market. Success → matched size / avg price applied. Definite failure → item `FAILED`, liability refunded (`REFUND`). Timeout / network error → item stays `PENDING`; the reconciler looks the order up by `customerOrderRef` and either applies it or, after 60 s without trace, fails and refunds it.
+4. *(exchange mode only)* `placeOrders` per market. Success → matched size / avg price applied. Definite failure → item `FAILED`, liability refunded (`REFUND`). Timeout / network error → item stays `PENDING`; the reconciler looks the order up by `customerOrderRef` and either applies it or, after 60 s without trace, fails and refunds it.
 5. Unmatched portions can be cancelled or re-priced; cancelled or lapsed stake releases its liability.
 6. Settlement (stream sees `CLOSED` with WINNER/LOSER, or the 30 s job polls closed markets): per user and market, inside one transaction — `credit = reserved + P&L`, commission on **net positive market winnings**, `settlements.bet_item_id` is unique, ledger keys are deterministic → safe to run repeatedly. Void markets and non-runners refund in full; partly matched bets settle the matched part and refund the rest (`PARTIAL`).
 
@@ -334,6 +342,7 @@ Base path `/api`. Errors: `{ error: { code, message, details?, requestId } }`.
 
 ## Known limitations / next steps
 
+- **House-book risk is yours**: in house mode the platform pays all winnings. Set `maxMarketLiability`, per-user limits and commission to match your bankroll; watch Admin → Risk → house worst-case loss.
 - **Live Betfair calls were not exercised here** — the live client is written against the published API-NG / Stream API contracts and tested with recorded-format fixtures; validate against Betfair's integration environment with your app key before launch.
 - **Payments**: only `mock` and `manual` providers are included; integrate a licensed PSP through `PaymentProvider` and verify webhook signatures.
 - **KYC**: status workflow exists; document upload / identity-provider integration is not included.

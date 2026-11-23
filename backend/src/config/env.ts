@@ -48,6 +48,12 @@ const schema = z.object({
   BETFAIR_STREAMING: bool,
   BETFAIR_TIMEOUT_MS: z.coerce.number().int().default(8000),
   BETFAIR_EVENT_TYPE_IDS: z.string().default('4,1,2,7522,7511,7524,998917,5,3,6,26420387,7,27454571'),
+  /**
+   * house    = bets are matched and stored only in our database; the platform is the
+   *            counterparty. Betfair is used for prices and results only (default).
+   * exchange = bets are forwarded to Betfair with placeOrders (needs BETFAIR_PLACE_ORDERS).
+   */
+  BET_EXECUTION_MODE: z.enum(['house', 'exchange']).default('house'),
   BETFAIR_PLACE_ORDERS: bool,
   ALLOW_MOCK_IN_PRODUCTION: bool,
 

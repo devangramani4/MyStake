@@ -17,6 +17,7 @@ export function useRowIssue(sel: Selection): RowIssue | null {
   const runnerStatus = useAppSelector((s) => s.markets.books[sel.marketId]?.runners[sel.selectionId]?.status);
   const best = useAppSelector((s) => s.markets.books[sel.marketId]?.runners[sel.selectionId]?.[sel.side === 'BACK' ? 'back' : 'lay'][0]);
   const policy = useAppSelector((s) => s.betslip.unmatchedPolicy);
+  const house = useAppSelector((s) => s.ui.executionMode === 'house');
   const stake = Number(sel.stake);
   if (status === 'SUSPENDED') return { kind: 'suspended', message: 'Market suspended' };
   if (status === 'CLOSED') return { kind: 'closed', message: 'Market closed' };
@@ -26,7 +27,7 @@ export function useRowIssue(sel: Selection): RowIssue | null {
   if (best && policy === 'REJECT') {
     const worse = sel.side === 'BACK' ? best.price < sel.price : best.price > sel.price;
     if (worse) return { kind: 'odds', message: `Odds changed to ${fmtOdds(best.price)}`, currentPrice: best.price };
-    if (stake > best.size && best.price === sel.price) return { kind: 'liquidity', message: `Only ${money(best.size)} available at ${fmtOdds(best.price)}` };
+    if (!house && stake > best.size && best.price === sel.price) return { kind: 'liquidity', message: `Only ${money(best.size)} available at ${fmtOdds(best.price)}` };
   }
   return null;
 }
