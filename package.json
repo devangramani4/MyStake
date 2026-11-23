@@ -2,8 +2,14 @@
   "name": "betx-platform",
   "private": true,
   "version": "1.0.0",
-  "workspaces": ["backend", "frontend", "admin"],
+  "workspaces": [
+    "backend",
+    "frontend",
+    "admin"
+  ],
   "scripts": {
+    "setup": "node scripts/setup-env.mjs && npm run db:create -w backend && npm run db:migrate && npm run db:seed",
+    "dev": "node scripts/dev.mjs",
     "dev:backend": "npm run dev -w backend",
     "dev:frontend": "npm run dev -w frontend",
     "dev:admin": "npm run dev -w admin",
