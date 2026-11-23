@@ -41,9 +41,9 @@ export default function HomePage() {
   return (
     <div className="page">
       <section className="hero">
-        <span className="badge badge-brand" style={{ alignSelf: 'flex-start' }}>Betting exchange</span>
-        <h1>Back it. Lay it. <em>Set your own odds.</em></h1>
-        <p>Trade on live exchange prices across cricket, football, tennis and more — with real-time odds and in-play markets.</p>
+        <span className="badge badge-brand" style={{ alignSelf: 'flex-start' }}>Back &amp; lay betting</span>
+        <h1>Back it. Lay it. <em>Live odds, every ball.</em></h1>
+        <p>Back or lay on cricket, football, tennis and more — with real-time odds and in-play markets.</p>
         <div className="row wrap">
           {user ? <Link to="/live" className="btn btn-primary btn-lg"><Radio size={18} /> Go in-play</Link> : <Link to="/register" className="btn btn-primary btn-lg">Create account</Link>}
           <Link to="/sports" className="btn btn-secondary btn-lg">Browse sports</Link>
