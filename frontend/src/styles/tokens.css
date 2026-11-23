@@ -1,0 +1,65 @@
+/* Design tokens — dark exchange theme. Brand is configurable; no third-party branding. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0e14;
+  --bg-elev: #10141d;
+  --surface: #151a25;
+  --surface-2: #1b2130;
+  --surface-3: #232a3b;
+  --border: #252d3f;
+  --border-strong: #33405a;
+  --text: #e8ecf4;
+  --text-2: #a7b0c2;
+  --text-3: #6f7a90;
+
+  --brand: #f5b83d;
+  --brand-ink: #1a1203;
+  --brand-soft: rgba(245, 184, 61, 0.14);
+
+  /* Exchange conventions: back = blue, lay = pink */
+  --back: #7cc4ff;
+  --back-strong: #a6d6ff;
+  --back-bg: rgba(124, 196, 255, 0.16);
+  --back-ink: #071a2b;
+  --lay: #f7a1c4;
+  --lay-strong: #fbc2d8;
+  --lay-bg: rgba(247, 161, 196, 0.16);
+  --lay-ink: #2b0716;
+
+  --success: #34d399;
+  --success-bg: rgba(52, 211, 153, 0.14);
+  --danger: #f87171;
+  --danger-bg: rgba(248, 113, 113, 0.14);
+  --warning: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.14);
+  --live: #ff4d5e;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fs-xs: 11px;
+  --fs-sm: 12.5px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 28px;
+  --fs-3xl: 40px;
+
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  --header-h: 60px;
+  --sidebar-w: 240px;
+  --slip-w: 340px;
+  --bottom-nav-h: 60px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}

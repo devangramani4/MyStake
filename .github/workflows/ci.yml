@@ -1,0 +1,33 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: betx_test
+          MYSQL_USER: betx
+          MYSQL_PASSWORD: betx
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot" --health-interval=5s --health-retries=30
+    env:
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_USER: betx
+      DATABASE_PASSWORD: betx
+      TEST_DATABASE_NAME: betx_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test --workspace backend
+      - run: npm test --workspace frontend
+      - run: npm run build --workspace frontend && npm run build --workspace admin

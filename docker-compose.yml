@@ -1,0 +1,51 @@
+# Local full-stack run: MySQL + API (mock exchange by default) + nginx serving web/admin.
+#   docker compose up --build
+#   web   → http://localhost:8080
+#   admin → http://localhost:8081
+# Secrets come from .env (copy .env.example). Never commit real values.
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DATABASE_NAME:-betx}
+      MYSQL_USER: ${DATABASE_USER:-betx}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD:?set DATABASE_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-time-zone=+00:00"]
+    volumes: [mysql-data:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      retries: 30
+
+  migrate:
+    build: { context: ., dockerfile: docker/backend.Dockerfile }
+    env_file: .env
+    environment: { DATABASE_HOST: mysql, NODE_ENV: development }
+    command: ["sh", "-c", "node dist/scripts/migrate.js && node dist/scripts/seed.js"]
+    depends_on: { mysql: { condition: service_healthy } }
+    restart: "no"
+
+  api:
+    build: { context: ., dockerfile: docker/backend.Dockerfile }
+    env_file: .env
+    environment:
+      DATABASE_HOST: mysql
+      TRUST_PROXY: "1"
+      CORS_ORIGINS: http://localhost:8080,http://localhost:8081
+      PUBLIC_WEB_URL: http://localhost:8080
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+    # Mount Betfair certificates read-only in live mode:
+    # volumes: ["./certs:/run/secrets/betfair:ro"]
+
+  web:
+    build: { context: ., dockerfile: docker/web.Dockerfile }
+    ports: ["8080:80", "8081:8081"]
+    depends_on: [api]
+    restart: unless-stopped
+
+volumes:
+  mysql-data:

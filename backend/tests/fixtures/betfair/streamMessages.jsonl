@@ -1,0 +1,7 @@
+{"op":"connection","connectionId":"002-051134157842-432409"}
+{"op":"status","id":1,"statusCode":"SUCCESS","connectionClosed":false}
+{"op":"mcm","id":2,"initialClk":"G7rHmQ4tbA==","clk":"AAAAAAAA","conflateMs":0,"heartbeatMs":5000,"pt":1700000000000,"ct":"SUB_IMAGE","mc":[{"id":"1.234567890","img":true,"tv":150000,"marketDefinition":{"status":"OPEN","inPlay":false,"betDelay":0,"version":1,"runners":[{"id":414464,"status":"ACTIVE"},{"id":414465,"status":"ACTIVE"}]},"rc":[{"id":414464,"ltp":1.85,"tv":90000,"batb":[[0,1.85,5000],[1,1.84,2500],[2,1.83,7500]],"batl":[[0,1.86,3500],[1,1.87,4000],[2,1.88,2000]]},{"id":414465,"ltp":2.18,"batb":[[0,2.16,1200]],"batl":[[0,2.2,900]]}]}]}
+{"op":"mcm","id":2,"clk":"AAAAAAAB","pt":1700000000500,"mc":[{"id":"1.234567890","rc":[{"id":414464,"ltp":1.84,"batb":[[0,1.84,6000],[2,1.82,0]]}]}]}
+{"op":"mcm","id":2,"clk":"AAAAAAAC","pt":1700000001000,"ct":"HEARTBEAT"}
+{"op":"mcm","id":2,"clk":"AAAAAAAD","pt":1700000002000,"mc":[{"id":"1.234567890","marketDefinition":{"status":"SUSPENDED","inPlay":true,"betDelay":5,"version":2,"runners":[{"id":414464,"status":"ACTIVE"},{"id":414465,"status":"ACTIVE"}]}}]}
+{"op":"mcm","id":2,"clk":"AAAAAAAE","pt":1700000090000,"mc":[{"id":"1.234567890","marketDefinition":{"status":"CLOSED","inPlay":true,"betDelay":5,"version":3,"runners":[{"id":414464,"status":"WINNER"},{"id":414465,"status":"LOSER"}]}}]}

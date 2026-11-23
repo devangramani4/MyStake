@@ -1,0 +1,17 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "customerRef": "abc124",
+    "status": "FAILURE",
+    "errorCode": "MARKET_SUSPENDED",
+    "marketId": "1.234567890",
+    "instructionReports": [
+      {
+        "status": "FAILURE",
+        "errorCode": "ERROR_IN_ORDER",
+        "instruction": { "selectionId": 414464, "handicap": 0, "limitOrder": { "size": 100, "price": 1.85, "persistenceType": "LAPSE" }, "orderType": "LIMIT", "side": "BACK" }
+      }
+    ]
+  },
+  "id": 1
+}

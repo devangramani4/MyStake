@@ -1,0 +1,83 @@
+/* ───────── App shell: Header / Sidebar / Main / Bet slip ───────── */
+.shell { min-height: 100vh; display: grid; grid-template-rows: var(--header-h) 1fr; }
+.header { position: sticky; top: 0; z-index: 50; height: var(--header-h); display: flex; align-items: center; gap: var(--space-4); padding: 0 var(--space-4); background: rgba(11,14,20,.9); backdrop-filter: saturate(140%) blur(10px); border-bottom: 1px solid var(--border); }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 19px; letter-spacing: -.02em; }
+.logo-mark { width: 30px; height: 30px; border-radius: 8px; background: var(--bg-elev); border: 1px solid var(--border-strong); display: grid; place-items: center; }
+.logo b { color: var(--brand); }
+.header-nav { display: flex; gap: 4px; margin-left: var(--space-4); }
+.header-nav a { padding: 8px 12px; border-radius: var(--radius); color: var(--text-2); font-weight: 600; font-size: var(--fs-md); display: inline-flex; gap: 6px; align-items: center; }
+.header-nav a.active, .header-nav a:hover { color: var(--text); background: var(--surface-2); }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); }
+.balance-pill { display: flex; align-items: center; height: 38px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+.balance-pill .amt { padding: 0 12px; font-weight: 700; display: flex; flex-direction: column; justify-content: center; line-height: 1.1; }
+.balance-pill .amt small { font-size: 10px; color: var(--text-3); font-weight: 600; }
+.balance-pill .btn { border-radius: 0; height: 100%; }
+.unread-dot { position: absolute; top: 6px; right: 6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: var(--live); color: white; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+.conn-banner { position: sticky; top: var(--header-h); z-index: 40; background: var(--warning-bg); color: var(--warning); text-align: center; font-size: var(--fs-sm); padding: 6px 12px; border-bottom: 1px solid rgba(251,191,36,.25); }
+
+.body { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--slip-w); min-height: calc(100vh - var(--header-h)); }
+.sidebar { position: sticky; top: var(--header-h); height: calc(100vh - var(--header-h)); overflow-y: auto; border-right: 1px solid var(--border); background: var(--bg-elev); padding: var(--space-3); display: flex; flex-direction: column; gap: 2px; }
+.side-label { font-size: var(--fs-xs); color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: 14px 10px 6px; }
+.side-link { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius); color: var(--text-2); font-weight: 500; }
+.side-link:hover { background: var(--surface); color: var(--text); }
+.side-link.active { background: var(--surface-2); color: var(--text); }
+.side-link .count { margin-left: auto; font-size: var(--fs-xs); color: var(--text-3); }
+.side-link .live-count { margin-left: auto; font-size: var(--fs-xs); color: var(--live); font-weight: 700; }
+.main { min-width: 0; padding-bottom: var(--space-8); }
+.slip-col { position: sticky; top: var(--header-h); height: calc(100vh - var(--header-h)); border-left: 1px solid var(--border); background: var(--bg-elev); display: flex; flex-direction: column; }
+.footer { border-top: 1px solid var(--border); padding: var(--space-8) var(--space-5); color: var(--text-3); font-size: var(--fs-sm); display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-8); }
+.footer-links { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.footer-links a:hover { color: var(--text); }
+.age-badge { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--text-3); font-weight: 800; font-size: 12px; color: var(--text-2); }
+
+.bottom-nav { display: none; }
+.mobile-only { display: none; }
+
+@media (max-width: 1280px) {
+  .body { grid-template-columns: 220px minmax(0, 1fr) 310px; }
+}
+@media (max-width: 1080px) {
+  .body { grid-template-columns: minmax(0, 1fr) 320px; }
+  .sidebar { display: none; }
+  .mobile-only { display: inline-grid; }
+}
+@media (max-width: 860px) {
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .slip-col { display: none; }
+  .header-nav { display: none; }
+  .main { padding-bottom: calc(var(--bottom-nav-h) + 24px + env(safe-area-inset-bottom)); }
+  .bottom-nav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; bottom: 0; left: 0; right: 0; z-index: 60; height: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: rgba(16,20,29,.96); backdrop-filter: blur(10px); border-top: 1px solid var(--border); }
+  .bottom-nav a, .bottom-nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10.5px; font-weight: 600; color: var(--text-3); background: none; border: 0; position: relative; }
+  .bottom-nav .active { color: var(--brand); }
+  .slip-count { position: absolute; top: 6px; left: calc(50% + 6px); min-width: 17px; height: 17px; border-radius: 99px; background: var(--brand); color: var(--brand-ink); font-size: 10px; font-weight: 800; display: grid; place-items: center; padding: 0 4px; }
+}
+@media (max-width: 560px) {
+  .header { gap: 8px; padding: 0 12px; }
+  .logo span.word { display: none; }
+  .balance-pill .btn { padding: 0 10px; }
+}
+
+/* ───────── Bet slip ───────── */
+.slip { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.slip-head { display: flex; align-items: center; justify-content: space-between; padding: 14px var(--space-4); border-bottom: 1px solid var(--border); }
+.slip-title { font-weight: 800; display: flex; gap: 8px; align-items: center; }
+.slip-body { flex: 1; overflow-y: auto; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); min-height: 0; }
+.slip-foot { border-top: 1px solid var(--border); padding: var(--space-4); display: flex; flex-direction: column; gap: 10px; background: var(--bg-elev); }
+.bet-row { border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--back); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.bet-row.lay { border-left-color: var(--lay); }
+.bet-row.warn { border-color: rgba(251,191,36,.5); }
+.bet-row-top { display: flex; justify-content: space-between; gap: 8px; }
+.bet-row .sel { font-weight: 700; }
+.bet-row .mkt { font-size: var(--fs-xs); color: var(--text-3); }
+.bet-inputs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.bet-inputs > * { min-width: 0; }
+.stepper { display: flex; align-items: stretch; height: 40px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-elev); overflow: hidden; }
+.stepper button { width: 30px; background: var(--surface-2); border: 0; color: var(--text-2); }
+.stepper input { flex: 1; min-width: 0; width: 100%; text-align: center; border: 0; background: transparent; outline: none; font-weight: 700; }
+.stake-input { height: 40px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-elev); padding: 0 10px; font-weight: 700; width: 100%; outline: none; }
+.stake-input:focus { border-color: var(--brand); }
+.quick-stakes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.quick-stakes button { height: 28px; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border); font-size: var(--fs-xs); font-weight: 700; color: var(--text-2); }
+.kv { display: flex; justify-content: space-between; font-size: var(--fs-sm); color: var(--text-2); }
+.kv b { color: var(--text); }
+.slip-empty { text-align: center; color: var(--text-3); padding: 40px 16px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
